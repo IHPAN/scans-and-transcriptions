@@ -8,6 +8,7 @@ from google.genai import types
 
 
 HTR_MODEL_OPTIONS = [
+    ("Gemini 4 Argon", "gemini-4-argon"),
     ("Gemini 3.1 Pro Preview", "gemini-3.1-pro-preview"),
     ("Gemini 3.5 Flash", "gemini-3.5-flash"),
     ("Gemini 3.6 Flash", "gemini-3.6-flash"),

@@ -192,6 +192,7 @@ class ManuscriptEditor:
         self._init_environment()
 
         self.MODEL_PRICES = {
+            "gemini-4-argon": (2.0, 10.0),
             "gemini-3.1-pro-preview": (2.0, 12.0),
             "gemini-3.5-flash": (1.5, 9.0),
             "gemini-3.1-flash-lite": (0.25, 1.5),
