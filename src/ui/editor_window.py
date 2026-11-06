@@ -70,6 +70,7 @@ from services.prompt_service import DEFAULT_PROMPT_TEMPLATE, ensure_prompt_dir, 
 from services.pdf_service import can_extract_pdf_pages, extract_pdf_pages
 from services.text_service import build_diff_ranges, prepare_text_for_tei, tag_entities_tei, tk_index_from_offset
 from services.usage_log_service import append_usage_log, read_usage_log
+from services.litellm_service import get_api_key as get_litellm_api_key, transcribe_image as litellm_transcribe_image
 from ui.batch_controller import BatchController
 from ui.canvas_controller import CanvasController
 from ui.dialogs import (
@@ -83,6 +84,16 @@ from ui.window_utils import set_scaled_geometry
 Image.MAX_IMAGE_PIXELS = None
 warnings.simplefilter("ignore", Image.DecompressionBombWarning)
 logger = logging.getLogger(__name__)
+
+
+def _response_diagnostics(response):
+    if response is None:
+        return "brak fragmentów odpowiedzi"
+    candidates = getattr(response, "candidates", None) or []
+    reasons = [str(getattr(candidate, "finish_reason", None) or "brak") for candidate in candidates]
+    feedback = getattr(response, "prompt_feedback", None)
+    block = getattr(feedback, "block_reason", None) if feedback else None
+    return f"finish_reason={','.join(reasons) or 'brak'}; block_reason={block or 'brak'}; usage={getattr(response, 'usage_metadata', None)}"
 
 class ToolTip:
     """ klasa tworząca dymek z podpowiedzią z opóźnieniem (500ms) """
@@ -152,6 +163,8 @@ class ManuscriptEditor:
         self.load_lang()
 
         self.llm_provider = "gemini"
+        self.litellm_endpoint = "https://ai-test.ihpan.edu.pl/v1/chat/completions"
+        self.litellm_model = "qwen3.8-flash-next-fp8"
         self.api_key = ""
         self.default_prompt = ""
         self.htr_model = DEFAULT_HTR_MODEL
@@ -1606,6 +1619,8 @@ class ManuscriptEditor:
             self.default_prompt = config.default_prompt
             self.last_folder = config.last_folder
             self.llm_provider = config.llm_provider
+            self.litellm_endpoint = config.litellm_endpoint
+            self.litellm_model = config.litellm_model
             self.htr_model = config.htr_model
             self.fix_model = config.fix_model
             self.analysis_model = config.analysis_model
@@ -1642,6 +1657,8 @@ class ManuscriptEditor:
                     default_prompt=self.default_prompt,
                     last_folder=getattr(self, "last_folder", existing_config.last_folder),
                     llm_provider=getattr(self, "llm_provider", existing_config.llm_provider),
+                    litellm_endpoint=getattr(self, "litellm_endpoint", existing_config.litellm_endpoint),
+                    litellm_model=getattr(self, "litellm_model", existing_config.litellm_model),
                     api_key=existing_config.api_key,
                     htr_model=getattr(self, "htr_model", existing_config.htr_model),
                     fix_model=getattr(self, "fix_model", existing_config.fix_model),
@@ -2439,6 +2456,8 @@ class ManuscriptEditor:
 
     def _ai_button_text(self):
         provider = getattr(self, "llm_provider", "gemini")
+        if provider == "litellm":
+            return "LiteLLM"
         if provider == "ollama":
             return "Ollama"
         if provider == "mistral":
@@ -2453,6 +2472,9 @@ class ManuscriptEditor:
 
 
     def _transcribe_current_provider(self, image_path):
+        if self.llm_provider == "litellm":
+            return litellm_transcribe_image(image_path, self.prompt_text, endpoint=self.litellm_endpoint,
+                                            model=self.litellm_model, timeout_seconds=self.api_timeout_seconds)
         if self.llm_provider == "ollama":
             return ollama_transcribe_image(
                 self.prompt_text,
@@ -2565,10 +2587,14 @@ class ManuscriptEditor:
         """ wątek dla pojedynczego pliku z obsługą strumieniowania """
         start_time = time.monotonic()
         try:
-            if self.llm_provider in {"ollama", "mistral", "datalab"} or not self.stream_transcription:
+            if self.llm_provider in {"ollama", "mistral", "datalab", "litellm"} or not self.stream_transcription:
                 model, response = self._transcribe_current_provider(image_path)
                 if response.usage_metadata:
                     self.root.after(0, lambda: self._log_model_usage(model, response.usage_metadata))
+                if not (response.text or "").strip():
+                    details = _response_diagnostics(response)
+                    logger.warning("Pusta odpowiedź transkrypcji: model=%s image=%s %s", model, image_path, details)
+                    raise RuntimeError(f"Model nie zwrócił tekstu transkrypcji.\n{details}")
                 elapsed_seconds = time.monotonic() - start_time
                 self.root.after(0, self._single_finished, True, response.text or "", elapsed_seconds)
                 return
@@ -2580,8 +2606,15 @@ class ManuscriptEditor:
 
             # iteracja po strumieniu odpowiedzi
             loop_usage_metadata = None
+            has_text = False
+            last_response = None
+            diagnostics = []
             for response in stream:
+                last_response = response
+                if getattr(response, "candidates", None) or getattr(response, "prompt_feedback", None):
+                    diagnostics.append(_response_diagnostics(response))
                 if response.text:
+                    has_text = has_text or bool(response.text.strip())
                     # przekazanie fragmentu tekstu do aktualizacji UI
                     self.root.after(0, self._append_stream_text, response.text)
                 if response.usage_metadata:
@@ -2589,6 +2622,11 @@ class ManuscriptEditor:
 
             if loop_usage_metadata:
                 self.root.after(0, lambda: self._log_model_usage(model, loop_usage_metadata))
+
+            if not has_text:
+                details = " | ".join(diagnostics[-3:]) if diagnostics else _response_diagnostics(last_response)
+                logger.warning("Pusty strumień transkrypcji: model=%s image=%s %s", model, image_path, details)
+                raise RuntimeError(f"Model nie zwrócił tekstu transkrypcji.\n{details}")
 
             elapsed_seconds = time.monotonic() - start_time
             self.root.after(0, self._single_finished, True, "", elapsed_seconds)
@@ -2663,6 +2701,11 @@ class ManuscriptEditor:
     def ensure_ai_config(self):
         """Sprawdza konfigurację dostawcy modelu przed wywołaniem AI."""
         provider = getattr(self, "llm_provider", "gemini")
+        if provider == "litellm":
+            if get_litellm_api_key():
+                return True
+            messagebox.showerror(self.t["msg_error_title"], self.t["litellm_missing_key"], parent=self.root)
+            return False
         if provider == "ollama":
             return True
         if provider == "mistral":
@@ -2692,7 +2735,7 @@ class ManuscriptEditor:
 
     def ensure_non_ocr_ai_config(self):
         """Sprawdza konfigurację funkcji wymagających modelu promptowanego."""
-        if getattr(self, "llm_provider", "gemini") in {"mistral", "datalab"}:
+        if getattr(self, "llm_provider", "gemini") in {"mistral", "datalab", "litellm"}:
             messagebox.showinfo(
                 self.t["msg_warning"],
                 self.t["ocr_provider_only_info"],

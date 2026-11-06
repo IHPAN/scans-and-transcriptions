@@ -4,15 +4,11 @@ import logging
 import mimetypes
 import os
 import re
-import socket
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
 
-DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-0"
-DEFAULT_MISTRAL_API_URL = "https://api.mistral.ai/v1/ocr"
+DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 
 logger = logging.getLogger(__name__)
 
@@ -176,16 +172,6 @@ def ocr_image(
         "table_format": table_format,
     }
 
-    request = urllib.request.Request(
-        DEFAULT_MISTRAL_API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
     logger.info(
         "Mistral OCR request started: model=%s image=%s mime=%s size_bytes=%s timeout=%ss",
         model_name,
@@ -195,19 +181,16 @@ def ocr_image(
         timeout_seconds,
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace").strip()
-        details = f": {error_body}" if error_body else ""
+        from mistralai.client import Mistral
+
+        with Mistral(api_key=api_key, timeout_ms=int(timeout_seconds * 1000)) as client:
+            response = client.ocr.process(**payload)
+        data = response.model_dump(mode="json", by_alias=True)
+    except ImportError as exc:
+        raise RuntimeError("Brak biblioteki mistralai. Zainstaluj zależności z requirements.txt.") from exc
+    except Exception as exc:
         logger.exception("Mistral OCR request failed: model=%s image=%s", model_name, image_path)
-        raise RuntimeError(f"Mistral OCR odrzucił żądanie: HTTP {exc.code} {exc.reason}{details}") from exc
-    except (TimeoutError, socket.timeout) as exc:
-        logger.exception("Mistral OCR request timed out: model=%s image=%s", model_name, image_path)
-        raise RuntimeError(f"Mistral OCR nie zwrócił odpowiedzi w ciągu {timeout_seconds} s.") from exc
-    except urllib.error.URLError as exc:
-        logger.exception("Mistral OCR connection failed: model=%s image=%s", model_name, image_path)
-        raise RuntimeError(f"Nie można połączyć się z Mistral OCR: {exc}") from exc
+        raise RuntimeError(f"Błąd Mistral OCR: {exc}") from exc
 
     logger.info("Mistral OCR request finished: model=%s image=%s", model_name, image_path)
     return model_name, MistralResponse(

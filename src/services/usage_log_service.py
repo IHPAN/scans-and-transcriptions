@@ -21,8 +21,8 @@ def thinking_token_count(usage_metadata) -> int:
 
 
 def calculate_usage_cost(model_prices: dict, model_name: str, usage_metadata) -> float:
-    in_tokens = usage_metadata.prompt_token_count
-    out_tokens = usage_metadata.candidates_token_count
+    in_tokens = getattr(usage_metadata, "prompt_token_count", None) or 0
+    out_tokens = getattr(usage_metadata, "candidates_token_count", None) or 0
     thought_tokens = thinking_token_count(usage_metadata)
     prices = model_prices.get(model_name, (0.0, 0.0))
     return (in_tokens / 1_000_000 * prices[0]) + ((out_tokens + thought_tokens) / 1_000_000 * prices[1])
@@ -34,8 +34,8 @@ def append_usage_log(folder: str, model_prices: dict, model_name: str, usage_met
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     thought_tokens = thinking_token_count(usage_metadata)
     log_line = (
-        f"{now};{model_name};{usage_metadata.prompt_token_count};"
-        f"{usage_metadata.candidates_token_count};{thought_tokens};{cost:.6f}\n"
+        f"{now};{model_name};{getattr(usage_metadata, 'prompt_token_count', None) or 0};"
+        f"{getattr(usage_metadata, 'candidates_token_count', None) or 0};{thought_tokens};{cost:.6f}\n"
     )
 
     with _LOG_WRITE_LOCK:

@@ -1,0 +1,20 @@
+Jesteś specjalistą w zakresie paleografii łacińskiej, brachygrafii średniowiecznej i typografii starodruków XV–XVI wieku.
+
+Wykonaj dokładną transkrypcję załączonej strony drukowanej w języku łacińskim, zapisanej pismem gotyckim. Zastosuj transkrypcję z rozwiniętymi skrótami (expanded transcription).
+
+ZASADY:
+1. Rozpoznaj i rozwiń wszystkie identyfikowalne abrewiacje: kreski oznaczające pominięte m lub n, skróty z literami nadpisanymi, znaki dla per/pro/pre, konwencjonalne skróty związane z q (np. qui, quae, quod, quia, quam, que), końcówki fleksyjne, skróty religijne oraz znak tyroński et.
+2. Rozwinięcia ustalaj na podstawie rzeczywistego kształtu znaku, morfologii łacińskiej, składni i kontekstu. Nie zakładaj, że wszystkie podobne znaki mają to samo znaczenie.
+3. Rozwijaj skróty do pełnych wyrazów, bez oznaczania dodanych liter nawiasami, chyba że zaznaczono inaczej.
+4. Zachowaj historyczną pisownię, formy fleksyjne, słownictwo i interpunkcję w maksymalnym możliwym stopniu. Nie modernizuj łaciny ani nie poprawiaj automatycznie pisowni.
+5. Odróżniaj abrewiacje od ligatur, wariantów liter i typowych cech pisma gotyckiego. Nie traktuj każdego nietypowego znaku jako skrótu.
+6. Nie domyślaj się brakujących wyrazów wyłącznie na podstawie sensu zdania. Jeśli rozwinięcie jest niepewne, zachowaj odczyt możliwie bliski źródłu i oznacz niepewność nawiasem kwadratowym ze znakiem zapytania.
+7. Nie tłumacz tekstu, nie streszczaj go i nie dodawaj komentarzy.
+8. Połącz wyrazy rozdzielone na końcach wierszy, ale zachowaj kolejność kolumn i akapitów. Nie trzeba odtwarzać podziału na wiersze.
+9. Jeśli w zbitce dwóch liter "i" druga zapisywana jest jako "j" to należy ją transkrybować jako "i".
+10. Po kropce należy wstawiać wielka literę (zaczynając nowe zdanie).
+11. Litery u/v należy zawsze oddawać jako u.
+
+Przed podaniem wyniku sprawdź ponownie całą stronę pod kątem nierozwiniętych abrewiacji, zwłaszcza kresek nad samogłoskami, skrótów q/p oraz znaków końcowych przypominających cyfrę 9.
+
+Zwróć wyłącznie pełny tekst transkrypcji.

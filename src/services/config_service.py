@@ -23,7 +23,7 @@ from services.ollama_service import DEFAULT_OLLAMA_BASE_URL, DEFAULT_OLLAMA_MODE
 
 
 def _normalize_provider(provider: str | None) -> str:
-    return provider if provider in {"gemini", "ollama", "mistral", "datalab"} else "gemini"
+    return provider if provider in {"gemini", "ollama", "mistral", "datalab", "litellm"} else "gemini"
 
 
 def _normalize_mistral_table_format(value: str | None) -> str:
@@ -76,6 +76,8 @@ def load_app_config(filename: str = "config.json") -> AppConfig:
         default_prompt=data.get("default_prompt", "prompt_handwritten_pol_xx_century.txt"),
         last_folder=data.get("last_folder", ""),
         llm_provider=_normalize_provider(data.get("llm_provider", "gemini")),
+        litellm_endpoint=data.get("litellm_endpoint") or "https://ai-test.ihpan.edu.pl/v1/chat/completions",
+        litellm_model=data.get("litellm_model") or "qwen3.8-flash-next-fp8",
         api_key=data.get("api_key", ""),
         htr_model=normalize_model_selection("htr", data.get("htr_model", DEFAULT_HTR_MODEL)),
         fix_model=normalize_model_selection(
@@ -117,6 +119,8 @@ def save_app_config(app_config: AppConfig, filename: str = "config.json") -> Non
     data["default_prompt"] = app_config.default_prompt
     data["last_folder"] = app_config.last_folder or ""
     data["llm_provider"] = _normalize_provider(app_config.llm_provider)
+    data["litellm_endpoint"] = app_config.litellm_endpoint
+    data["litellm_model"] = app_config.litellm_model
     data["api_key"] = app_config.api_key or ""
     data["htr_model"] = normalize_model_selection("htr", app_config.htr_model)
     data["fix_model"] = normalize_model_selection("fix", app_config.fix_model)

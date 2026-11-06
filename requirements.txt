@@ -3,6 +3,7 @@ Pillow
 python-docx
 python-dotenv
 google-genai
+mistralai>=3,<4
 datalab-python-sdk
 pymupdf
 openpyxl

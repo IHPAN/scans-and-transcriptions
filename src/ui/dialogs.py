@@ -248,25 +248,31 @@ def open_settings_dialog(app):
     ollama_tab_frame = ttk.Frame(notebook)
     mistral_tab_frame = ttk.Frame(notebook)
     datalab_tab_frame = ttk.Frame(notebook)
+    litellm_tab_frame = ttk.Frame(notebook)
     notebook.add(general_tab_frame, text=app.t["settings_tab_general"])
     notebook.add(gemini_tab_frame, text=app.t["settings_tab_gemini"])
     notebook.add(ollama_tab_frame, text=app.t["settings_tab_ollama"])
     notebook.add(mistral_tab_frame, text=app.t["settings_tab_mistral"])
     notebook.add(datalab_tab_frame, text=app.t["settings_tab_datalab"])
+    notebook.add(litellm_tab_frame, text="LiteLLM")
 
     general_tab = ScrolledFrame(general_tab_frame, autohide=False)
     gemini_tab = ScrolledFrame(gemini_tab_frame, autohide=False)
     ollama_tab = ScrolledFrame(ollama_tab_frame, autohide=False)
     mistral_tab = ScrolledFrame(mistral_tab_frame, autohide=False)
     datalab_tab = ScrolledFrame(datalab_tab_frame, autohide=False)
+    litellm_tab = ScrolledFrame(litellm_tab_frame, autohide=False)
     general_tab.pack(fill=BOTH, expand=True, padx=10, pady=10)
     gemini_tab.pack(fill=BOTH, expand=True, padx=10, pady=10)
     ollama_tab.pack(fill=BOTH, expand=True, padx=10, pady=10)
     mistral_tab.pack(fill=BOTH, expand=True, padx=10, pady=10)
     datalab_tab.pack(fill=BOTH, expand=True, padx=10, pady=10)
+    litellm_tab.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
     config = load_app_config(app.config_file)
     provider_var = tk.StringVar(value=config.llm_provider)
+    litellm_endpoint_var = tk.StringVar(value=config.litellm_endpoint)
+    litellm_model_var = tk.StringVar(value=config.litellm_model)
     api_key_var = tk.StringVar(value=config.api_key)
     htr_model_var = tk.StringVar(value=model_label_for_code("htr", config.htr_model))
     fix_model_var = tk.StringVar(value=model_label_for_code("fix", config.fix_model))
@@ -292,7 +298,7 @@ def open_settings_dialog(app):
     provider_combo = ttk.Combobox(
         general_tab,
         state="readonly",
-        values=["gemini", "ollama", "mistral", "datalab"],
+        values=["gemini", "ollama", "mistral", "datalab", "litellm"],
         textvariable=provider_var,
         width=16,
     )
@@ -300,6 +306,12 @@ def open_settings_dialog(app):
     provider_combo.focus_set()
 
     ttk.Separator(general_tab).pack(fill=X, pady=(4, 10))
+
+    ttk.Label(litellm_tab, text=app.t["litellm_endpoint_label"]).pack(anchor="w")
+    ttk.Entry(litellm_tab, textvariable=litellm_endpoint_var).pack(fill=X, pady=(2, 10))
+    ttk.Label(litellm_tab, text=app.t["litellm_model_label"]).pack(anchor="w")
+    ttk.Entry(litellm_tab, textvariable=litellm_model_var).pack(fill=X, pady=(2, 10))
+    ttk.Label(litellm_tab, text=app.t["litellm_key_help"], wraplength=640).pack(anchor="w")
 
     ttk.Label(gemini_tab, text=app.t["settings_api_key_label"], font=("Segoe UI", 10, "bold")).pack(anchor="w")
     ttk.Label(
@@ -572,6 +584,8 @@ def open_settings_dialog(app):
 
     def save_settings():
         app.llm_provider = provider_var.get()
+        app.litellm_endpoint = litellm_endpoint_var.get().strip()
+        app.litellm_model = litellm_model_var.get().strip()
         app.api_key = api_key_var.get().strip()
         app.htr_model = model_code_for_label("htr", htr_model_var.get())
         app.fix_model = model_code_for_label("fix", fix_model_var.get())
@@ -624,6 +638,8 @@ def open_settings_dialog(app):
                     default_prompt=app.default_prompt,
                     last_folder=getattr(app, "last_folder", ""),
                     llm_provider=app.llm_provider,
+                    litellm_endpoint=app.litellm_endpoint,
+                    litellm_model=app.litellm_model,
                     api_key=app.api_key,
                     htr_model=app.htr_model,
                     fix_model=app.fix_model,
